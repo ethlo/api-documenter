@@ -136,44 +136,47 @@ My solution to this is to generate a meta-model (JSON based), that can easily be
 ### Maven plugin
 ```xml
 <plugin>
-				<groupId>org.bsc.maven</groupId>
-				<artifactId>maven-processor-plugin</artifactId>
-				<version>2.2.4</version>
-				<executions>
-					<execution>
-						<id>process</id>
-						<goals>
-							<goal>process</goal>
-						</goals>
-						<phase>generate-sources</phase>
-						<configuration>
-							<processors>
-								<processor>com.ethlo.api.apt.ApiProcessor</processor>
-							</processors>
-							<options>
-								<classMarkers>org.springframework.ws.server.endpoint.annotation.Endpoint</classMarkers>
-								<methodMarkers>org.springframework.web.bind.annotation.RequestMapping,org.springframework.ws.server.endpoint.annotation.PayloadRoot</methodMarkers>
-								<excludeJavadoc>false</excludeJavadoc>
-								<target>${project.build.directory}</target>
-							</options>
-						</configuration>
-					</execution>
-				</executions>
-				<dependencies>
-					<dependency>
-						<groupId>com.ethlo.doc</groupId>
-						<artifactId>api-documenter</artifactId>
-						<version>1.0-SNAPSHOT</version>
-					</dependency>
-				</dependencies>
-			</plugin>
+	<groupId>org.bsc.maven</groupId>
+	<artifactId>maven-processor-plugin</artifactId>
+	<version>2.2.4</version>
+	<executions>
+		<execution>
+			<id>process</id>
+			<goals>
+				<goal>process</goal>
+			</goals>
+			<phase>generate-sources</phase>
+			<configuration>
+				<processors>
+					<processor>com.ethlo.api.apt.ApiProcessor</processor>
+				</processors>
+				<options>
+					<classMarkers>org.springframework.ws.server.endpoint.annotation.Endpoint</classMarkers>
+					<methodMarkers>org.springframework.web.bind.annotation.RequestMapping,org.springframework.ws.server.endpoint.annotation.PayloadRoot</methodMarkers>
+					<excludeJavadoc>false</excludeJavadoc>
+					<target>${project.build.directory}</target>
+				</options>
+			</configuration>
+		</execution>
+	</executions>
+	<dependencies>
+		<dependency>
+			<groupId>com.ethlo.doc</groupId>
+			<artifactId>api-documenter</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
+	</dependencies>
+</plugin>
 ```
+
+## Maven repository
+http://ethlo.com/maven
 
 ## Maven artifact
 ```xml
 <dependency>
   <groupId>com.ethlo.doc</groupId>
-  <artifactId>api-documentation</artifactId>
+  <artifactId>api-documenter</artifactId>
   <version>1.0-SNAPSHOT</version>
 </dependency>
 ```
