@@ -15,13 +15,12 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
 import org.junit.Test;
-import org.springframework.security.access.annotation.Secured;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.ws.server.endpoint.annotation.Endpoint;
 import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
 
-import com.ethlo.staticanalysis.ApiProcessor;
+import com.ethlo.api.apt.ApiProcessor;
 
 public class TestCompileWithProcessor
 {

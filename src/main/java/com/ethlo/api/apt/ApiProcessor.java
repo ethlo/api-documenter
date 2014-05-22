@@ -1,4 +1,4 @@
-package com.ethlo.staticanalysis;
+package com.ethlo.api.apt;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -8,7 +8,6 @@ import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -29,6 +28,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 
+import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -43,28 +43,27 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class ApiProcessor extends AbstractProcessor
 {
-    private Set<ClassDescriptor> collector = new LinkedHashSet<>();
+    private Map<String, ClassDescriptor> collector = new LinkedHashMap<>();
     private Elements elementsUtil;
     private String targetDir;
     private Set<String> classMarkers;
     private Set<String> methodMarkers;
     private boolean excludeJavadoc = false;
     private Set<String> excludeAnnotations;
+    private final ObjectMapper mapper = new ObjectMapper();
     
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv)
     {
         this.elementsUtil = processingEnv.getElementUtils();
         
-        final ClassDescriptor classDesc = getClassDescriptor(annotations, roundEnv);
-        
         for (TypeElement t : annotations)
         {
             for (Element e : roundEnv.getElementsAnnotatedWith(t))
             {
                 if (ElementKind.METHOD.equals(e.getKind()))
-                {
-                    handleMethod(classDesc, (ExecutableElement) e);
+                { 
+                    handleMethod(getClassDescriptor(e.getEnclosingElement()), (ExecutableElement) e);
                 }
             }
         }
@@ -77,6 +76,18 @@ public class ApiProcessor extends AbstractProcessor
         return false;
     }
     
+    private ClassDescriptor getClassDescriptor(Element e)
+    {
+        final String key = elementsUtil.getPackageOf(e).toString() + "." +  e.getSimpleName().toString();
+        if (collector.containsKey(key))
+        {
+            return collector.get(key);
+        }
+        final ClassDescriptor candidate = new ClassDescriptor(elementsUtil.getPackageOf(e).toString(), e.getSimpleName().toString(), wrapAnnotations(filterAnnotations(elementsUtil.getAllAnnotationMirrors(e))));
+        collector.put(key, candidate);
+        return candidate;
+    }
+
     @Override
     public Set<String> getSupportedOptions()
     {
@@ -132,16 +143,17 @@ public class ApiProcessor extends AbstractProcessor
 
     private void createReport()
     {
-        final ObjectMapper mapper = new ObjectMapper();
         mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
         mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
         mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
         
         final File targetFile = new File(targetDir, "api-doc.json");
+        targetFile.getParentFile().mkdirs();
+        
         try (final Writer writer = new BufferedWriter(new FileWriter(targetFile)))
         {
             mapper.writerWithDefaultPrettyPrinter().writeValue(writer, this.collector);
-            info("Wrote API documentation file to " + targetFile);
+            info("Wrote API documentation file to " + targetFile.getAbsolutePath());
         }
         catch (IOException e)
         {
@@ -149,22 +161,6 @@ public class ApiProcessor extends AbstractProcessor
         }
     }
     
-    private ClassDescriptor getClassDescriptor(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv)
-    {
-        for (TypeElement t : annotations)
-        {
-            for (Element e : roundEnv.getElementsAnnotatedWith(t))
-            {
-                if (ElementKind.CLASS.equals(e.getKind()))
-                {
-                    final List<AnnotationDescriptor> allClassAnnotations = wrapAnnotations(filterAnnotations(elementsUtil.getAllAnnotationMirrors(e)));
-                    return new ClassDescriptor(elementsUtil.getPackageOf(e).toString(), e.getSimpleName().toString(), allClassAnnotations);
-                }
-            }
-        }
-        return null;
-    }
-
     private void handleMethod(ClassDescriptor classDesc, ExecutableElement e)
     {
         if (! containsClassMarker(e))
@@ -181,7 +177,6 @@ public class ApiProcessor extends AbstractProcessor
         final TypeDescriptor returnType = wrapType(e.getReturnType());
         final MethodDescriptor methodDesc = new MethodDescriptor(simpleName, methodAnnotations, params, returnType, declaredExceptions, this.excludeJavadoc ? null : elementsUtil.getDocComment(e));
         classDesc.addMethod(methodDesc);
-        collector.add(classDesc);
     }
 
     private List<? extends AnnotationMirror> filterAnnotations(List<? extends AnnotationMirror> allAnnotationMirrors)
@@ -237,10 +232,10 @@ public class ApiProcessor extends AbstractProcessor
     private List<VariableDescriptor> wrapParams(List<? extends VariableElement> parameters)
     {
         final List<VariableDescriptor> retVal = new ArrayList<>();
-        for (VariableElement variable : parameters)
+        for (VariableElement param : parameters)
         {
-            final List<AnnotationDescriptor> paramAnnotations = wrapAnnotations(variable.getAnnotationMirrors());
-            retVal.add(new VariableDescriptor(variable.getSimpleName().toString(), wrapType(variable.asType()), paramAnnotations));
+            final List<AnnotationDescriptor> paramAnnotations = wrapAnnotations(param.getAnnotationMirrors());
+            retVal.add(new VariableDescriptor(param.getSimpleName().toString(), wrapType(param.asType()), paramAnnotations));
         }
         return retVal;
     }
@@ -307,6 +302,10 @@ public class ApiProcessor extends AbstractProcessor
                 return retVal;
             }
             return null;
+        }
+        else if (ClassUtils.isPrimitiveOrWrapper(value.getClass()))
+        {
+            return value;
         }
         else
         {

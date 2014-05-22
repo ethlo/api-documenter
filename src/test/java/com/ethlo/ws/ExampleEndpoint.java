@@ -5,16 +5,21 @@ import java.io.IOException;
 
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.ws.server.endpoint.annotation.Endpoint;
 import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
 import org.springframework.ws.server.endpoint.annotation.RequestPayload;
 import org.springframework.ws.server.endpoint.annotation.ResponsePayload;
 
+import com.ethlo.api.annotations.Api;
+
 @Transactional
 @Endpoint
 @RequestMapping("/basepath")
+@Api(group="public")
 public class ExampleEndpoint
 {
     public static final String NS = "urn://foo/bar";
@@ -41,6 +46,14 @@ public class ExampleEndpoint
             throw new IOException("Nope, don't like that one");
         }
         
+        return null;
+    }
+    
+    @Api(group="private")
+    @Secured("ROLE_ADMIN")
+    @RequestMapping(method=RequestMethod.PUT, value="/admin/stats") 
+    public @ResponseBody @ResponsePayload ResponseObject stats(@RequestPayload @RequestBody RequestObject req)
+    {
         return null;
     }
 }

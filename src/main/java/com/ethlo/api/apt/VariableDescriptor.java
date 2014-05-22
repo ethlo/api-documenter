@@ -1,4 +1,4 @@
-package com.ethlo.staticanalysis;
+package com.ethlo.api.apt;
 
 import java.util.List;
 

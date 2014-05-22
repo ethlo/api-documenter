@@ -6,13 +6,21 @@
 	<name>API documenter</name>
 	<version>1.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
+	<build>
+		<extensions>
+			<extension>
+				<groupId>org.apache.maven.wagon</groupId>
+				<artifactId>wagon-ssh</artifactId>
+				<version>1.0</version>
+			</extension>
+		</extensions>
+	</build>
 	<dependencies>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 			<version>2.3.3</version>
 		</dependency>
-		
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-test</artifactId>
@@ -29,7 +37,7 @@
 			<artifactId>spring-security-core</artifactId>
 			<version>3.2.3.RELEASE</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -52,4 +60,16 @@
 		<maven.compiler.target>1.7</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
+	<scm>
+		<url>http://github.com:ethlo/api-documenter</url>
+		<connection>scm:git:git@github.com:ethlo/api-documenter</connection>
+		<developerConnection>scm:git:git@github.com:ethlo/api-documenter.git</developerConnection>
+	</scm>
+	<distributionManagement>
+		<repository>
+			<id>ethlo-repo</id>
+			<url>scp://scp.domeneshop.no//home/3/e/ethlo/www/maven</url>
+		</repository>
+	</distributionManagement>
+	
 </project>
