@@ -26,7 +26,6 @@ public class ExampleEndpoint
      * @param id The id of the item
      * @return The item
      */
-    @Api(group="public")
     @Secured("ROLE_READER")
     @RequestMapping(method=RequestMethod.GET, value="/items/{id}")
     @PayloadRoot(localPart = "GetItemRequest", namespace = NS)
@@ -35,7 +34,6 @@ public class ExampleEndpoint
         ...
     }
     
-    @Api(group="public")
     @Secured("ROLE_WRITER")
     @RequestMapping(method=RequestMethod.PUT, value="/items/{id}") 
     public String write(int id, String content) throws FileNotFoundException, IOException
