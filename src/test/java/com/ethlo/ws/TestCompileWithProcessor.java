@@ -15,6 +15,7 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
 import org.junit.Test;
+import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.ws.server.endpoint.annotation.Endpoint;
@@ -33,15 +34,17 @@ public class TestCompileWithProcessor
         // Get a new instance of the standard file manager implementation
         final StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
 
-        final Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(new File(
-                "src/test/java/com/ethlo/ws/ExampleEndpoint.java")));
+        final Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(
+            new File("src/test/java/com/ethlo/ws/ExampleEndpoint.java"),
+            new File("src/test/java/com/ethlo/ws/ExampleController.java")
+            ));
 
         // Create the compilation task
         final Set<String> options = new HashSet<String>();
         options.add("-AclassMarkers=" + Endpoint.class.getCanonicalName() + "," + RequestMapping.class.getCanonicalName());
         options.add("-AmethodMarkers=" + RequestMapping.class.getCanonicalName() + "," + PayloadRoot.class.getCanonicalName());
-        options.add("-AexcludeAnnotations=" + Transactional.class.getCanonicalName());
-        options.add("-AexcludeJavadoc=true");
+        options.add("-AexcludeAnnotations=" + Transactional.class.getCanonicalName() + "," + Controller.class.getCanonicalName());
+        options.add("-AexcludeJavadoc=false");
 
         // Create the compilation task
         final CompilationTask task = compiler.getTask(null, fileManager, null, options, null, compilationUnits);

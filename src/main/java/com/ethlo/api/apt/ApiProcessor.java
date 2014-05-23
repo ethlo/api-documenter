@@ -69,7 +69,17 @@ public class ApiProcessor extends AbstractProcessor
         
         for (TypeElement t : annotations)
         {
-            for (Element e : roundEnv.getElementsAnnotatedWith(t))
+            Set<? extends Element> annWith = new TreeSet<>();
+            try
+            {
+                annWith = roundEnv.getElementsAnnotatedWith(t);
+            }
+            catch (IllegalArgumentException exc)
+            {
+                info(exc.getMessage());
+            }
+            
+            for (Element e : annWith)
             {
                 if (ElementKind.METHOD.equals(e.getKind()))
                 { 
@@ -180,15 +190,15 @@ public class ApiProcessor extends AbstractProcessor
 
     private void handleMethod(ClassDescriptor classDesc, ExecutableElement e)
     {
-        if (! containsClassMarker(e))
-        {
-            return;
-        }
-        
         final String simpleName = e.getSimpleName().toString();
         final List<VariableDescriptor> params = wrapParams(e.getParameters());
 
-        final List<AnnotationDescriptor> methodAnnotations = wrapAnnotations(filterAnnotations(elementsUtil.getAllAnnotationMirrors(e)));
+        final List<? extends AnnotationMirror> allMethodAnnotations = elementsUtil.getAllAnnotationMirrors(e);
+        if (! containsMethodMarker(allMethodAnnotations))
+        {
+            return;
+        }
+        final List<AnnotationDescriptor> methodAnnotations = wrapAnnotations(filterAnnotations(allMethodAnnotations));
             
         final List<TypeDescriptor> declaredExceptions = wrapTypes(e.getThrownTypes());
         final TypeDescriptor returnType = wrapType(e.getReturnType());
@@ -215,19 +225,15 @@ public class ApiProcessor extends AbstractProcessor
         return filtered;
     }
 
-    private boolean containsClassMarker(ExecutableElement e)
+    private boolean containsMethodMarker(List<? extends AnnotationMirror> classAnnotationsForMethod)
     {
-        if (this.classMarkers != null)
+        for (String annClass : this.methodMarkers)
         {
-            final List<? extends AnnotationMirror> classAnnotationsForMethod = elementsUtil.getAllAnnotationMirrors(e.getEnclosingElement());
-            for (String annClass : this.classMarkers)
+            for (AnnotationMirror annMirror : classAnnotationsForMethod)
             {
-                for (AnnotationMirror annMirror : classAnnotationsForMethod)
+                if (annClass.equals(annMirror.getAnnotationType().toString()))
                 {
-                    if (annClass.equals(annMirror.getAnnotationType().toString()))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
         }
@@ -343,9 +349,9 @@ public class ApiProcessor extends AbstractProcessor
             compileDir.mkdir();
             fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(compileDir));
         }
-        catch (IOException e1)
+        catch (IOException exc)
         {
-            throw new RuntimeException(e1);
+            throw new RuntimeException(exc);
         }
         
         final List<? extends VariableElement> params = e.getParameters();
