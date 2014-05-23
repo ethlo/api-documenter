@@ -25,8 +25,15 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaCompiler.CompilationTask;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
+import javax.tools.ToolProvider;
 
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
@@ -34,8 +41,10 @@ import org.springframework.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
+import com.fasterxml.jackson.module.jsonSchema.factories.SchemaFactoryWrapper;
 
 /**
  * 
@@ -51,6 +60,7 @@ public class ApiProcessor extends AbstractProcessor
     private boolean excludeJavadoc = false;
     private Set<String> excludeAnnotations;
     private final ObjectMapper mapper = new ObjectMapper();
+    private Map<String, String> schemas = new LinkedHashMap<>();
     
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv)
@@ -148,19 +158,26 @@ public class ApiProcessor extends AbstractProcessor
         mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
         
         final File targetFile = new File(targetDir, "api-doc.json");
-        targetFile.getParentFile().mkdirs();
+        writeFile(targetFile, this.collector);
         
+        final File targetTypeFile = new File(targetDir, "api-types.json");
+        writeFile(targetTypeFile, this.schemas);
+    }
+    
+    private void writeFile(File targetFile, Object obj)
+    {
+        targetFile.getParentFile().mkdirs();
         try (final Writer writer = new BufferedWriter(new FileWriter(targetFile)))
         {
-            mapper.writerWithDefaultPrettyPrinter().writeValue(writer, this.collector);
-            info("Wrote API documentation file to " + targetFile.getAbsolutePath());
+            mapper.writerWithDefaultPrettyPrinter().writeValue(writer, obj);
+            info("Wrote file " + targetFile.getAbsolutePath());
         }
         catch (IOException e)
         {
             throw new RuntimeException(e.getMessage(), e);
-        }
+        }        
     }
-    
+
     private void handleMethod(ClassDescriptor classDesc, ExecutableElement e)
     {
         if (! containsClassMarker(e))
@@ -175,6 +192,9 @@ public class ApiProcessor extends AbstractProcessor
             
         final List<TypeDescriptor> declaredExceptions = wrapTypes(e.getThrownTypes());
         final TypeDescriptor returnType = wrapType(e.getReturnType());
+        
+        compile(e);
+        
         final MethodDescriptor methodDesc = new MethodDescriptor(simpleName, methodAnnotations, params, returnType, declaredExceptions, this.excludeJavadoc ? null : elementsUtil.getDocComment(e));
         classDesc.addMethod(methodDesc);
     }
@@ -311,5 +331,81 @@ public class ApiProcessor extends AbstractProcessor
         {
             throw new IllegalArgumentException("Unhandled type: " + value + ". " + value.getClass());
         }
+    }
+    
+    private void compile(ExecutableElement e)
+    {
+        final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        final StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
+        try
+        {
+            final File compileDir = new File("compile-temp");
+            compileDir.mkdir();
+            fileManager.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(compileDir));
+        }
+        catch (IOException e1)
+        {
+            throw new RuntimeException(e1);
+        }
+        
+        final List<? extends VariableElement> params = e.getParameters();
+        final List<File> files = new ArrayList<>();
+        final List<String> classNames = new ArrayList<>();
+        for (VariableElement param : params)
+        {
+            addType(files, classNames, param.asType());
+        }
+        addType(files, classNames, e.getReturnType());
+        
+        if (! files.isEmpty())
+        {
+            final Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromFiles(files);
+            final CompilationTask task = compiler.getTask(null, fileManager, null, null, null, compilationUnits);
+            task.call();
+        }
+        
+        for (String className : classNames)
+        {
+            try
+            {
+                final Class<?> clazz = Class.forName(className);
+                final SchemaFactoryWrapper visitor = new SchemaFactoryWrapper();
+                mapper.acceptJsonFormatVisitor(clazz, visitor);
+                final JsonSchema schema = visitor.finalSchema();
+                schemas .put(className, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(schema));
+            }
+            catch (StackOverflowError err)
+            {
+                info("Circular data type: " + className);
+            }
+            catch (ClassNotFoundException exc)
+            {
+                info(exc.getMessage());
+            }
+            catch (JsonProcessingException exc)
+            {
+                throw new RuntimeException(exc.getMessage(), exc);
+            }
+        }
+    }
+
+    private boolean addType(List<File> files, List<String> classNames, TypeMirror type)
+    {
+        final String fqn = type.toString();
+        
+        if (schemas.containsKey(fqn))
+        {
+            return false;
+        }
+        
+        final String relPath = fqn.replaceAll("\\.", "/");
+        final File file = new File("src/main/java/" + relPath + ".java");
+        final boolean isPrimitive = type instanceof PrimitiveType;
+        if (!isPrimitive && file.exists())
+        {
+            files.add(file);
+        }
+        classNames.add(fqn);
+        return true;
     }
 }
