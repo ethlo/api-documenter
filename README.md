@@ -52,6 +52,8 @@ public class ExampleEndpoint
 ```
 
 ### Output
+
+#### api.json
 ```json
 {
   "com.ethlo.ws.ExampleEndpoint" : {
@@ -101,7 +103,8 @@ public class ExampleEndpoint
       } ],
       "returnType" : {
         "type" : "java.lang.String"
-      }
+      },
+      "javadoc" : " Allow the reading of an item by id\n @param id The id of the item\n @return The item\n"
     }, {
       "methodName" : "stats",
       "annotations" : {
@@ -172,7 +175,13 @@ public class ExampleEndpoint
   }
 }
 ```
-
+#### data-types.json
+```
+{
+  "com.ethlo.ws.RequestObject": "{\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"filter\" : {\n      \"type\" : \"string\"\n    }\n  }\n}",
+  "com.ethlo.ws.ResponseObject": "{\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"age\" : {\n      \"type\" : \"integer\"\n    },\n    \"name\" : {\n      \"type\" : \"string\"\n    }\n  }\n}"
+}
+```
 ## Usage
 
 ### Maven plugin
