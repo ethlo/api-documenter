@@ -9,7 +9,51 @@ There are a multitude of different API generators out there for both RESTful and
 
 My solution to this is to generate a meta-model (JSON based), that can easily be rendered by pretty much any view technology out there.
 
-## Example output
+## Example
+
+### Input
+```java
+@Transactional
+@Endpoint
+@RequestMapping("/basepath")
+@Api(group="public")
+public class ExampleEndpoint
+{
+    public static final String NS = "urn://foo/bar";
+    
+    /**
+     * Allow the reading of an item by id
+     * @param id The id of the item
+     * @return The item
+     */
+    @Api(group="public")
+    @Secured("ROLE_READER")
+    @RequestMapping(method=RequestMethod.GET, value="/items/{id}")
+    @PayloadRoot(localPart = "GetItemRequest", namespace = NS)
+    public @ResponsePayload String read(@RequestPayload int id)
+    {
+        ...
+    }
+    
+    @Api(group="public")
+    @Secured("ROLE_WRITER")
+    @RequestMapping(method=RequestMethod.PUT, value="/items/{id}") 
+    public String write(int id, String content) throws FileNotFoundException, IOException
+    {
+        ...
+    }
+    
+    @Api(group="hidden")
+    @Secured("ROLE_ADMIN")
+    @RequestMapping(method=RequestMethod.PUT, value="/admin/stats") 
+    public @ResponseBody @ResponsePayload ResponseObject stats(@RequestPayload @RequestBody RequestObject req)
+    {
+        ...
+    }
+}
+```
+
+### Output
 ```json
 {
   "com.ethlo.ws.ExampleEndpoint" : {
