@@ -9,6 +9,8 @@ There are a multitude of different API generators out there for both RESTful and
 
 My solution to this is to generate a meta-model (JSON based), that can easily be rendered by pretty much any view technology out there.
 
+[![Build Status](https://travis-ci.org/ethlo/api-documenter.svg?branch=master)](https://travis-ci.org/ethlo/api-documenter)
+
 ## Example
 
 ### Input
