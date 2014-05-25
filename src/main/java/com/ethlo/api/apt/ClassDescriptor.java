@@ -74,4 +74,14 @@ public class ClassDescriptor
         return packageName.equals(other.packageName) 
              && className.equals(other.className);
     }
+    
+    public String getPackageName()
+    {
+        return this.packageName;
+    }
+
+    public Set<MethodDescriptor> getMethods()
+    {
+        return this.methods;
+    }
 }

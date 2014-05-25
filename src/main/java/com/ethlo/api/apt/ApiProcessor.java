@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +44,11 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
+import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
+import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.factories.SchemaFactoryWrapper;
 
@@ -52,15 +58,21 @@ import com.fasterxml.jackson.module.jsonSchema.factories.SchemaFactoryWrapper;
  */
 public class ApiProcessor extends AbstractProcessor
 {
-    private Map<String, ClassDescriptor> collector = new LinkedHashMap<>();
+    private final Set<String> primitiveTypes = new HashSet<>(Arrays.asList("byte", "short", "int", "long", "float", "double", "boolean", "char"));
+    
     private Elements elementsUtil;
-    private String targetDir;
-    private Set<String> classMarkers;
+    private String srcDir;
+    private boolean createTypeSchemas = true;
     private Set<String> methodMarkers;
     private boolean excludeJavadoc = false;
-    private Set<String> excludeAnnotations;
+    private Set<String> filterAnnotations;
+    
     private final ObjectMapper mapper = new ObjectMapper();
-    private Map<String, String> schemas = new LinkedHashMap<>();
+    private String target;
+    private Set<String> groupsIncluded;
+    private Set<String> groupsExcluded;
+    
+    private Result result = new Result();
     
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv)
@@ -98,20 +110,19 @@ public class ApiProcessor extends AbstractProcessor
     
     private ClassDescriptor getClassDescriptor(Element e)
     {
-        final String key = elementsUtil.getPackageOf(e).toString() + "." +  e.getSimpleName().toString();
-        if (collector.containsKey(key))
+        if (result.containsClass(e))
         {
-            return collector.get(key);
+            return result.getClass(e);
         }
         final ClassDescriptor candidate = new ClassDescriptor(elementsUtil.getPackageOf(e).toString(), e.getSimpleName().toString(), wrapAnnotations(filterAnnotations(elementsUtil.getAllAnnotationMirrors(e))));
-        collector.put(key, candidate);
+        result.addClass(candidate);
         return candidate;
     }
 
     @Override
     public Set<String> getSupportedOptions()
     {
-        return new TreeSet<>(Arrays.asList("classMarkers", "methodMarkers", "target", "excludeJavadoc", "excludeAnnotations"));
+        return new TreeSet<>(Arrays.asList("methodMarkers", "target", "excludeJavadoc", "filterAnnotations"));
     }
 
     @Override
@@ -132,28 +143,22 @@ public class ApiProcessor extends AbstractProcessor
         super.init(processingEnv);
         
         final Map<String, String> options = processingEnv.getOptions();
-        this.targetDir = options.get("target") != null ? options.get("target") : "target";
         
-        this.classMarkers = StringUtils.commaDelimitedListToSet(options.get("classMarkers"));
-        if (this.classMarkers.isEmpty())
-        {
-            throw new IllegalStateException("classMarkers must be set. Please specify one or more annotations that denotes your API classes");
-        }
-        
+        this.srcDir = options.get("source") != null ? options.get("source") : "src/main/java";
+        this.target = options.get("target") != null ? options.get("target") : "target/classes/api.json";
+        this.groupsIncluded = StringUtils.commaDelimitedListToSet(options.get("includeGroups"));
+        this.groupsExcluded = StringUtils.commaDelimitedListToSet(options.get("excludeGroups"));
         this.methodMarkers = StringUtils.commaDelimitedListToSet(options.get("methodMarkers"));
         if (this.methodMarkers.isEmpty())
         {
             throw new IllegalStateException("methodMarkers must be set. Please specify one or more annotations that denotes your API methods");
         }
-
         this.excludeJavadoc = Boolean.valueOf(options.get("excludeJavadoc"));
-        this.excludeAnnotations = StringUtils.commaDelimitedListToSet(options.get("excludeAnnotations"));
+        this.filterAnnotations = StringUtils.commaDelimitedListToSet(options.get("filterAnnotations"));
         
-        info("target: " + targetDir);
-        info("classMarkers: " + StringUtils.collectionToCommaDelimitedString(classMarkers));
         info("methodMarkers: " + StringUtils.collectionToCommaDelimitedString(methodMarkers));
         info("excludeJavadoc: " + excludeJavadoc);
-        info("excludeAnnotions: " + excludeAnnotations);
+        info("filterAnnotions: " + filterAnnotations);
     }
 
     private void info(String msg)
@@ -166,14 +171,28 @@ public class ApiProcessor extends AbstractProcessor
         mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
         mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
         mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
+        final AnnotationIntrospector introspector =  new AnnotationIntrospectorPair(new JaxbAnnotationIntrospector(mapper.getTypeFactory()), new JacksonAnnotationIntrospector());
+        mapper.setAnnotationIntrospector(introspector);
         
-        final File targetFile = new File(targetDir, "api-doc.json");
-        writeFile(targetFile, this.collector);
+        removeEmptyTypes(result);
         
-        final File targetTypeFile = new File(targetDir, "api-types.json");
-        writeFile(targetTypeFile, this.schemas);
+        final File targetFile = new File(target);
+        writeFile(targetFile, this.result);
     }
     
+    private void removeEmptyTypes(Result result)
+    {
+        final Iterator<Entry<String, ClassDescriptor>> iter = result.getClasses().entrySet().iterator();
+        while (iter.hasNext())
+        {
+            final Entry<String, ClassDescriptor> entry = iter.next();
+            if (entry.getValue().getMethods().isEmpty())
+            {
+                iter.remove();
+            }
+        }
+    }
+
     private void writeFile(File targetFile, Object obj)
     {
         targetFile.getParentFile().mkdirs();
@@ -203,9 +222,13 @@ public class ApiProcessor extends AbstractProcessor
         final List<TypeDescriptor> declaredExceptions = wrapTypes(e.getThrownTypes());
         final TypeDescriptor returnType = wrapType(e.getReturnType());
         
-        compile(e);
+        if (this.createTypeSchemas )
+        {
+            compile(e);
+        }
         
-        final MethodDescriptor methodDesc = new MethodDescriptor(simpleName, methodAnnotations, params, returnType, declaredExceptions, this.excludeJavadoc ? null : elementsUtil.getDocComment(e));
+        final String javadocOrNull = this.excludeJavadoc ? null : elementsUtil.getDocComment(e);
+        final MethodDescriptor methodDesc = new MethodDescriptor(simpleName, methodAnnotations, params, returnType, declaredExceptions, javadocOrNull);
         classDesc.addMethod(methodDesc);
     }
 
@@ -214,7 +237,7 @@ public class ApiProcessor extends AbstractProcessor
         final List<? extends AnnotationMirror> filtered = new ArrayList<>(allAnnotationMirrors);
         for (AnnotationMirror ann : allAnnotationMirrors)
         {
-            for (String excluded : this.excludeAnnotations)
+            for (String excluded : this.filterAnnotations)
             {
                 if (ann.getAnnotationType().toString().equals(excluded))
                 {
@@ -372,25 +395,28 @@ public class ApiProcessor extends AbstractProcessor
         
         for (String className : classNames)
         {
-            try
+            if (! primitiveTypes.contains(className))
             {
-                final Class<?> clazz = Class.forName(className);
-                final SchemaFactoryWrapper visitor = new SchemaFactoryWrapper();
-                mapper.acceptJsonFormatVisitor(clazz, visitor);
-                final JsonSchema schema = visitor.finalSchema();
-                schemas .put(className, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(schema));
-            }
-            catch (StackOverflowError err)
-            {
-                info("Circular data type: " + className);
-            }
-            catch (ClassNotFoundException exc)
-            {
-                info(exc.getMessage());
-            }
-            catch (JsonProcessingException exc)
-            {
-                throw new RuntimeException(exc.getMessage(), exc);
+                try
+                {
+                    final Class<?> clazz = Class.forName(className);
+                    final SchemaFactoryWrapper visitor = new SchemaFactoryWrapper();
+                    mapper.acceptJsonFormatVisitor(clazz, visitor);
+                    final JsonSchema schema = visitor.finalSchema();
+                    result.addType(className, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(schema));
+                }
+                catch (StackOverflowError err)
+                {
+                    info("Circular data type: " + className);
+                }
+                catch (ClassNotFoundException exc)
+                {
+                    info(exc.getMessage());
+                }
+                catch (JsonProcessingException exc)
+                {
+                    throw new RuntimeException(exc.getMessage(), exc);
+                }
             }
         }
     }
@@ -399,13 +425,13 @@ public class ApiProcessor extends AbstractProcessor
     {
         final String fqn = type.toString();
         
-        if (schemas.containsKey(fqn))
+        if (result.containsType(fqn))
         {
             return false;
         }
         
         final String relPath = fqn.replaceAll("\\.", "/");
-        final File file = new File("src/main/java/" + relPath + ".java");
+        final File file = new File(this.srcDir, relPath + ".java");
         final boolean isPrimitive = type instanceof PrimitiveType;
         if (!isPrimitive && file.exists())
         {
@@ -413,5 +439,43 @@ public class ApiProcessor extends AbstractProcessor
         }
         classNames.add(fqn);
         return true;
+    }
+    
+    private class Result
+    {
+        private Map<String, ClassDescriptor> api = new LinkedHashMap<>();
+        private Map<String, String> types = new LinkedHashMap<>();
+        
+        public boolean containsType(String fqn)
+        {
+            return this.types.containsKey(fqn);
+        }
+
+        public Map<String, ClassDescriptor> getClasses()
+        {
+            return this.api;
+        }
+
+        public ClassDescriptor addClass(ClassDescriptor candidate)
+        {
+            return this.api.put(candidate.getPackageName() + "." + candidate.getName(), candidate);
+        }
+
+        public ClassDescriptor getClass(Element e)
+        {
+            final String key = elementsUtil.getPackageOf(e).toString() + "." +  e.getSimpleName().toString();
+            return this.api.get(key);
+        }
+
+        public boolean containsClass(Element e)
+        {
+            final String key = elementsUtil.getPackageOf(e).toString() + "." +  e.getSimpleName().toString();
+            return this.api.containsKey(key);
+        }
+
+        public void addType(String fqn, String jsonSchema)
+        {
+            this.types.put(fqn, jsonSchema);
+        }
     }
 }

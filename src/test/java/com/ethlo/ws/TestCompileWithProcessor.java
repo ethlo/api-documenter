@@ -18,7 +18,6 @@ import org.junit.Test;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.ws.server.endpoint.annotation.Endpoint;
 import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
 
 import com.ethlo.api.apt.ApiProcessor;
@@ -41,9 +40,8 @@ public class TestCompileWithProcessor
 
         // Create the compilation task
         final Set<String> options = new HashSet<String>();
-        options.add("-AclassMarkers=" + Endpoint.class.getCanonicalName() + "," + RequestMapping.class.getCanonicalName());
         options.add("-AmethodMarkers=" + RequestMapping.class.getCanonicalName() + "," + PayloadRoot.class.getCanonicalName());
-        options.add("-AexcludeAnnotations=" + Transactional.class.getCanonicalName() + "," + Controller.class.getCanonicalName());
+        options.add("-AfilterAnnotations=" + Transactional.class.getCanonicalName() + "," + Controller.class.getCanonicalName());
         options.add("-AexcludeJavadoc=false");
 
         // Create the compilation task
