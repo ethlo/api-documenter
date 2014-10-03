@@ -2,8 +2,6 @@ package com.ethlo.api.apt;
 
 import java.util.Map;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 /**
  * 
  * @author mha
@@ -11,7 +9,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  */
 public class AnnotationDescriptor
 {
-    @JsonIgnore
     private TypeDescriptor type;
     private Map<String, Object> properties;
 
@@ -30,5 +27,10 @@ public class AnnotationDescriptor
     public String toString()
     {
         return "@" + type + (this.properties.isEmpty() ? "" : "(" + this.properties + ")");
+    }
+    
+    public Map<String, Object> getProperties()
+    {
+        return this.properties;
     }
 }

@@ -5,6 +5,7 @@ import java.io.IOException;
 
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -53,6 +54,20 @@ public class ExampleEndpoint
     @Secured("ROLE_ADMIN")
     @RequestMapping(method=RequestMethod.PUT, value="/admin/stats") 
     public @ResponseBody @ResponsePayload ResponseObject stats(@RequestPayload @RequestBody RequestObject req)
+    {
+        return null;
+    }
+    
+    /**
+     * This method is used to load detailed information about a person.
+     * 
+     * @param id The id of the person one wants to load information about
+     * @return The serialized person object
+     */
+    @Api(group="public")
+    @Secured("ROLE_USER")
+    @RequestMapping(method=RequestMethod.PUT, value="/person/{id}") 
+    public @ResponseBody @ResponsePayload Person getPerson(@PathVariable("id") int id)
     {
         return null;
     }

@@ -9,6 +9,7 @@ public class ResponseObject
 {
     private String name;
     private int age;
+    private Person helper;
 
     public String getName()
     {
@@ -28,5 +29,10 @@ public class ResponseObject
     public void setAge(int age)
     {
         this.age = age;
+    }
+    
+    public Person getHelper()
+    {
+        return this.helper;
     }
 }
