@@ -22,7 +22,7 @@ import org.springframework.ws.server.endpoint.annotation.PayloadRoot;
 
 import com.ethlo.api.apt.ApiProcessor;
 
-public class TestCompileWithProcessor
+public class TestCompileWithProcessorTest
 {
     @Test
     public void testCompileWithProcessor()
