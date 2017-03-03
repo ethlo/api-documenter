@@ -6,16 +6,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Throwables;
+
 /**
  * 
  * @author mha
  */
 public class ClassDescriptor
 {
-    private String packageName;
-    final String className;
-    private Map<String, AnnotationDescriptor> annotations;
-    private Set<MethodDescriptor> methods = new LinkedHashSet<>();
+    private final String packageName;
+    private final String className;
+    private final Map<String, AnnotationDescriptor> annotations;
+    private final Set<MethodDescriptor> methods = new LinkedHashSet<>();
 
     public ClassDescriptor(String packageName, String className, List<AnnotationDescriptor> allClassAnnotations)
     {
@@ -83,5 +86,23 @@ public class ClassDescriptor
     public Set<MethodDescriptor> getMethods()
     {
         return this.methods;
+    }
+    
+    public Map<String, AnnotationDescriptor> getAnnotations()
+    {
+        return annotations;
+    }
+
+    @Override
+    public String toString()
+    {
+        try
+        {
+            return ApiProcessor.mapper.writeValueAsString(this);
+        }
+        catch (JsonProcessingException exc)
+        {
+            throw Throwables.propagate(exc);
+        }
     }
 }

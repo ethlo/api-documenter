@@ -112,9 +112,9 @@ public class MethodDescriptor
                 sb.append(" ");
             }
             
-            sb.append(param.asType());
+            sb.append(param.getType());
             sb.append(" ");
-            sb.append(param.getSimpleName());
+            sb.append(param.getName());
             index++;
         }
         return sb.toString();
@@ -161,5 +161,10 @@ public class MethodDescriptor
         }
         
         return true;
+    }
+
+    public Map<String, AnnotationDescriptor> getAnnotations()
+    {
+        return annotations;
     }
 }

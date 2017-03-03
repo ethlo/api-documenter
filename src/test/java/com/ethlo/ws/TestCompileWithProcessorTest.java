@@ -43,6 +43,7 @@ public class TestCompileWithProcessorTest
         options.add("-AmethodMarkers=" + RequestMapping.class.getCanonicalName() + "," + PayloadRoot.class.getCanonicalName());
         options.add("-AfilterAnnotations=" + Transactional.class.getCanonicalName() + "," + Controller.class.getCanonicalName());
         options.add("-AexcludeJavadoc=false");
+        options.add("-Atemplate=oai.tpl");
 
         // Create the compilation task
         final CompilationTask task = compiler.getTask(null, fileManager, null, options, null, compilationUnits);

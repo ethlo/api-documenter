@@ -19,12 +19,12 @@ public class VariableDescriptor
         this.annotations = paramAnnotations;
     }
 
-    public TypeDescriptor asType()
+    public TypeDescriptor getType()
     {
         return type;
     }
 
-    public String getSimpleName()
+    public String getName()
     {
         return this.name;
     }

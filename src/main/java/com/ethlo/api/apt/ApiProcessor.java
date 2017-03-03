@@ -29,7 +29,8 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.PrimitiveType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.tools.JavaCompiler;
@@ -43,17 +44,22 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 import com.ethlo.api.annotations.Api;
+import com.ethlo.api.renderer.Renderer;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
-import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
-import com.fasterxml.jackson.module.jsonSchema.factories.SchemaFactoryWrapper;
+import com.github.reinert.jjschema.v1.JsonSchemaFactory;
+import com.github.reinert.jjschema.v1.JsonSchemaV4Factory;
+import com.google.common.base.Throwables;
 
 /**
  * 
@@ -63,6 +69,9 @@ public class ApiProcessor extends AbstractProcessor
 {
     private static final Set<String> primitiveTypes = new HashSet<>(Arrays.asList("byte", "short", "int", "long", "float", "double", "boolean", "char"));
     private static final Map<Class<?>, String> simpleTypes = new HashMap<>();
+    private static final JsonSchemaFactory schemaFactory = new JsonSchemaV4Factory();
+    
+    public static final ObjectMapper mapper;
     static
     {
         simpleTypes.put(String.class, "string");
@@ -74,6 +83,16 @@ public class ApiProcessor extends AbstractProcessor
         simpleTypes.put(Double.class, "double");
         simpleTypes.put(Boolean.class, "boolean");
         simpleTypes.put(Character.class, "character");
+        
+        mapper = new ObjectMapper();
+        mapper.setVisibility(mapper.getSerializationConfig().getDefaultVisibilityChecker()
+            .withCreatorVisibility(JsonAutoDetect.Visibility.NONE)
+            .withFieldVisibility(JsonAutoDetect.Visibility.NONE)
+            .withGetterVisibility(JsonAutoDetect.Visibility.PUBLIC_ONLY)
+            .withIsGetterVisibility(JsonAutoDetect.Visibility.PUBLIC_ONLY)
+            .withSetterVisibility(JsonAutoDetect.Visibility.NONE));
+        
+        schemaFactory.setAutoPutDollarSchema(true);
     }
     
     private Elements elementsUtil;
@@ -83,11 +102,12 @@ public class ApiProcessor extends AbstractProcessor
     private boolean excludeJavadoc = false;
     private Set<String> filterAnnotations;
     
-    private final ObjectMapper mapper = new ObjectMapper();
     private String target;
     private Result result = new Result();
     private Set<String> includeGroups;
     private Set<String> excludeGroups;
+    
+    private Set<String> excludedTypes = new TreeSet<>(Arrays.asList("org.springframework.ui.ModelMap"));
     
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv)
@@ -103,7 +123,7 @@ public class ApiProcessor extends AbstractProcessor
             }
             catch (IllegalArgumentException exc)
             {
-                info(exc.getMessage());
+                info(exc.toString());
             }
             
             for (Element e : annWith)
@@ -117,19 +137,29 @@ public class ApiProcessor extends AbstractProcessor
         
         if (roundEnv.getRootElements().isEmpty())
         {
+            // We are done, start assembling report
+            this.result.types.keySet()
+                .stream()
+                .forEach(t->System.out.println(t));
+            
             createReport();
         }
         
         return false;
     }
-    
+
     private ClassDescriptor getClassDescriptor(Element e)
     {
         if (result.containsClass(e))
         {
             return result.getClass(e);
         }
-        final ClassDescriptor candidate = new ClassDescriptor(elementsUtil.getPackageOf(e).toString(), e.getSimpleName().toString(), wrapAnnotations(filterAnnotations(elementsUtil.getAllAnnotationMirrors(e))));
+        final String packageName = elementsUtil.getPackageOf(e).toString();
+        final String name = e.getSimpleName().toString();
+        final List<? extends AnnotationMirror> allAnnotations = elementsUtil.getAllAnnotationMirrors(e);
+        final List<? extends AnnotationMirror> filteredAnnotations = filterAnnotations(allAnnotations);
+        final List<AnnotationDescriptor> annotations = wrapAnnotations(filteredAnnotations);
+        final ClassDescriptor candidate = new ClassDescriptor(packageName, name, annotations);
         result.addClass(candidate);
         return candidate;
     }
@@ -194,9 +224,31 @@ public class ApiProcessor extends AbstractProcessor
         removeEmptyTypes(result);
         
         final File targetFile = new File(target);
+        
+        // TODO: Make output filename configurable
+        final File renderedTargetFile = new File(target + ".html");
+        
         writeFile(targetFile, this.result);
+        writeRendered(renderedTargetFile, result);
     }
     
+    private void writeRendered(File target, Result result)
+    {
+        final Map<String, Object> model = new LinkedHashMap<>();
+        model.put("api", result.api);
+        model.put("types", result.types);
+        
+        try (final Writer out = new FileWriter(target))
+        {
+            // TODO: Make this configurable
+            Renderer.render(model, "oai.tpl.html", out);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e.getMessage(), e);
+        } 
+    }
+
     private void removeEmptyTypes(Result result)
     {
         final Iterator<Entry<String, ClassDescriptor>> iter = result.getClasses().entrySet().iterator();
@@ -311,6 +363,18 @@ public class ApiProcessor extends AbstractProcessor
         }
         return filtered;
     }
+    
+    private AnnotationMirror find(List<? extends AnnotationMirror> annotationMirrors, String fqn)
+    {
+        for (AnnotationMirror ann : annotationMirrors)
+        {
+            if (ann.getAnnotationType().toString().equals(fqn))
+            {
+                return ann;
+            }
+        }
+        return null;
+    }
 
     private boolean containsMethodMarker(List<? extends AnnotationMirror> classAnnotationsForMethod)
     {
@@ -329,7 +393,39 @@ public class ApiProcessor extends AbstractProcessor
 
     private TypeDescriptor wrapType(TypeMirror type)
     {
-        return new TypeDescriptor(type.toString());
+        final TypeDescriptor td = new TypeDescriptor(type.toString());
+        
+        if (type.getKind().equals(TypeKind.DECLARED))
+        {
+            final List<? extends AnnotationMirror> mirrors = this.elementsUtil.getAllAnnotationMirrors(((DeclaredType)type).asElement());
+            final AnnotationMirror mirror = find(mirrors, JsonSubTypes.class.getCanonicalName());
+            if (mirror != null)
+            {
+                for (Entry<? extends ExecutableElement, ? extends AnnotationValue> e : mirror.getElementValues().entrySet())
+                {
+                    @SuppressWarnings({ "unchecked"})
+                    final List<AnnotationMirror> values = (List<AnnotationMirror>) e.getValue().getValue();
+                    final List<AnnotationDescriptor> annoDesc = wrapAnnotations(values);
+                    
+                    for (AnnotationDescriptor ann : annoDesc)
+                    {
+                        final Map<String, Object> props = ann.getProperties();
+                        final String alias = props.get("name").toString();
+                        final String className = props.get("value").toString();
+                        
+                        // Need to compile the sub-class
+                        final List<File> files = new ArrayList<>();
+                        doCompile(files, Arrays.asList(className));
+                        final String schema = result.types.get(className);
+                        
+                        result.types.put(className, schema);
+                        td.getSubTypes().put(alias, className);
+                    }
+                }
+            }
+        }
+        
+        return td;
     }
 
     private List<TypeDescriptor> wrapTypes(List<? extends TypeMirror> thrownTypes)
@@ -428,6 +524,21 @@ public class ApiProcessor extends AbstractProcessor
     
     private void compile(ExecutableElement e)
     {
+        final List<? extends VariableElement> params = e.getParameters();
+        final List<File> files = new ArrayList<>();
+        final List<String> classNames = new ArrayList<>();
+        for (VariableElement param : params)
+        {
+            final String fqn = param.asType().toString();
+            addType(files, classNames, fqn);
+        }
+        final String fqn = e.getReturnType().toString();
+        addType(files, classNames, fqn);
+        doCompile(files, classNames);
+    }
+
+    private void doCompile(final List<File> files, List<String> classNames)
+    {
         final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         final StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
         try
@@ -441,15 +552,6 @@ public class ApiProcessor extends AbstractProcessor
         {
             throw new RuntimeException(exc);
         }
-        
-        final List<? extends VariableElement> params = e.getParameters();
-        final List<File> files = new ArrayList<>();
-        final List<String> classNames = new ArrayList<>();
-        for (VariableElement param : params)
-        {
-            addType(files, classNames, param.asType());
-        }
-        addType(files, classNames, e.getReturnType());
         
         if (! files.isEmpty())
         {
@@ -465,11 +567,15 @@ public class ApiProcessor extends AbstractProcessor
                 try
                 {
                     final Class<?> clazz = Class.forName(className);
-                    final SchemaFactoryWrapper visitor = new SchemaFactoryWrapper();
-                    mapper.acceptJsonFormatVisitor(clazz, visitor);
-                    final JsonSchema schema = visitor.finalSchema();
-                    final String strJsonSchema = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(schema);
-                    result.addType(className, strJsonSchema);
+                    //final ValidationSchemaFactoryWrapper visitor = new ValidationSchemaFactoryWrapper();
+                    //final SchemaFactoryWrapper visitor = new SchemaFactoryWrapper();
+                    //mapper.acceptJsonFormatVisitor(clazz, visitor);
+                    //final JsonSchema schema = visitor.finalSchema();
+                    //final String strJsonSchema = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(schema);
+
+                    final String schema = createSchema(clazz);
+                    
+                    result.addType(className, schema);
                 }
                 catch (StackOverflowError err)
                 {
@@ -479,26 +585,33 @@ public class ApiProcessor extends AbstractProcessor
                 {
                     info(exc.getMessage());
                 }
-                catch (JsonProcessingException exc)
-                {
-                    throw new RuntimeException(exc.getMessage(), exc);
-                }
             }
         }
     }
 
-    private boolean addType(List<File> files, List<String> classNames, TypeMirror type)
+    private String createSchema(Class<?> clazz)
     {
-        final String fqn = type.toString();
-        
-        if (result.containsType(fqn))
+        final JsonNode schema = schemaFactory.createSchema(clazz);
+        try
+        {
+            return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(schema);
+        }
+        catch (JsonProcessingException exc)
+        {
+            throw Throwables.propagate(exc);
+        }
+    }
+
+    private boolean addType(List<File> files, List<String> classNames, String fqn)
+    {
+        if (result.containsType(fqn) || excludedTypes.contains(fqn))
         {
             return false;
         }
         
         final String relPath = fqn.replaceAll("\\.", "/");
         final File file = new File(this.srcDir, relPath + ".java");
-        final boolean isPrimitive = type instanceof PrimitiveType;
+        final boolean isPrimitive = primitiveTypes.contains(fqn);
         if (!isPrimitive && file.exists())
         {
             files.add(file);

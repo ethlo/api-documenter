@@ -1,0 +1,170 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, shrink-to-fit=no, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>ethlo API documenter</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Custom CSS -->
+    <link href="https://blackrockdigital.github.io/startbootstrap-simple-sidebar/css/simple-sidebar.css" rel="stylesheet">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+<style>
+.taglist {
+	display: inline;
+	list-style: none;
+	margin-left:0;
+	padding-left:0;
+}
+
+.taglist li {
+	display: inline;
+}
+
+.taglist li:after {
+	content: ", ";
+}
+
+.taglist li:last-child:after {
+    content: "";
+}
+
+.panel-heading a:after {
+    font-family:'Glyphicons Halflings';
+    content:"\e114";
+    float: right;
+    color: grey;
+}
+.panel-heading a.collapsed:after {
+    content:"\e080";
+}
+</style>
+</head>
+<body>
+    <div id="wrapper">
+        <div id="sidebar-wrapper">
+            <ul class="sidebar-nav">
+                <li class="sidebar-brand">
+                    <a href="#">
+                        ethlo API Generator
+                    </a>
+                </li>
+                {% for cls in api %}
+                <li>
+                    <a href="#{{ cls.value.name }}">{{ cls.value.name }}</a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div id="page-content-wrapper">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-lg-12 panel-group" id="accordion">
+                        <a href="#menu-toggle" class="btn btn-default" id="menu-toggle">...</a>
+                        <h1>ethlo API documenter</h1>
+                        
+						{% for cls in api %}
+							{% set classRequestMapping = cls.value.annotations['org.springframework.web.bind.annotation.RequestMapping'] %}
+							{% set basePath = classRequestMapping.properties['value'][0] %}
+							
+							<h2 id="{{ cls.value.name }}">{{ cls.value.name }}</h2>
+							{% for method in cls.value.methods %}
+								{% set methodRequestMapping = method.annotations['org.springframework.web.bind.annotation.RequestMapping'] %}
+								{% set methodPath = methodRequestMapping.properties['value'][0] %}
+								{% set url = basePath+methodPath %}
+								{% set httpMethods = methodRequestMapping.properties['method'] %}
+								{% set doc = method.javadoc %}
+								{% set elemId = clas.name+'-'+method.name %}
+
+								<div class="panel panel-default">
+								  <div class="panel-heading">
+								    <h3 class="panel-title">
+								    	<a class="collapsed" data-toggle="collapse" data-target="#{{elemId}}">{{ method.name }} {{ url }}</a></h3>
+								  </div>
+								  
+								  <div id="{{elemId}}" class="panel-collapse collapse">
+								  <div class="panel-body">
+								  	<p>{{ doc }}</p>
+									<dl class="dl-horizontal">
+										<dt>URL</dt>
+										<dd>{{url}}</dd>
+										<dt>HTTP method</dt>
+										<dd>
+											<ul class="taglist">
+											{% for m in httpMethods %}
+												<li>{{m}}</li>
+											{% else %}
+												<li>GET</li>
+											{% endfor %}
+											</ul>
+										</dd>
+										<dt>Parameters</dt>
+										<dd>
+											<dl class="dl-horizontal">
+											{% for param in method.params %}
+												{% for subtype in param.type.subTypes %}
+													<dl>
+														<dt>@type:&quot;{{subtype.key}}&quot;</dt>
+														<dd><pre>{{types[subtype.value]}}</pre></dd>
+													</dl>
+												{% else %}
+									  			<dt>{{param.name}}</dt>
+												<dd><a href="#{{param.type.type}}">{{param.type.type}}</a></dd>
+												{% endfor %}
+												</dd>
+									  		{% endfor %}
+									  		</dl>
+										</dd>
+									</dl>
+								  </div>
+								  </div>
+								</div>
+							{% endfor %}
+						{% endfor %}                        
+                    </div>
+                </div>
+            </div>
+            
+            <h2>Types</h2>
+			<dl>
+			{% for type in types %}
+				<dt id="{{type.key}}">{{type.key}}</dt>
+				<dd><pre>{{type.value}}</pre></dd>
+			{% endfor %}
+			</dl>
+			
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+    <!-- Menu Toggle Script -->
+    <script>
+    $("#menu-toggle").click(function(e) {
+        e.preventDefault();
+        $("#wrapper").toggleClass("toggled");
+    });
+    </script>
+
+</body>
+</html>

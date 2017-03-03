@@ -1,15 +1,16 @@
 package com.ethlo.ws;
 
 import org.springframework.security.access.annotation.Secured;
-import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * @author mha
  */
-@Controller
+@RestController
 @RequestMapping("/system")
 public class ExampleController
 {
@@ -25,5 +26,12 @@ public class ExampleController
     public String memoryStatus(@PathVariable("section-name") String sectionName)
     {
         return null;
+    }
+    
+    @RequestMapping(value="/users", method=RequestMethod.POST)
+    @Secured("ROLE_ADMIN")
+    public void registerUser(Person person)
+    {
+        
     }
 }
