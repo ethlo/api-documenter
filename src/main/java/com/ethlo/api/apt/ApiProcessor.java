@@ -396,7 +396,7 @@ public class ApiProcessor extends AbstractProcessor
 
     private TypeDescriptor wrapType(TypeMirror type)
     {
-        final TypeDescriptor td = new TypeDescriptor(type.toString(), null);
+        final TypeDescriptor td = new TypeDescriptor(type.toString());
         
         if (type.getKind().equals(TypeKind.DECLARED))
         {

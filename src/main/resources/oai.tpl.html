@@ -118,7 +118,7 @@
 										<dd>
 											<dl class="dl-horizontal">
 											{% for param in method.params %}
-												{{param.annotations}}
+												<!-- {{param.annotations}} -->
 												{% for subtype in param.type.subTypes %}
 													<dl> 
 														<dt>{{subtype}}</dt>

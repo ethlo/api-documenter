@@ -38,6 +38,6 @@ public class TypeDescriptor
     @Override
     public String toString()
     {
-        return type + (!subTypes.isEmpty() ? " ->" + StringUtils.toString(subTypes) : "");
+        return type + (subTypes != null && !subTypes.isEmpty() ? " -> " + StringUtils.toString(subTypes) : "");
     }
 }
