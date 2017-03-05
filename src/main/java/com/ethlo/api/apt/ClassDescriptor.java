@@ -1,10 +1,10 @@
 package com.ethlo.api.apt;
 
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Throwables;
@@ -18,7 +18,7 @@ public class ClassDescriptor
     private final String packageName;
     private final String className;
     private final Map<String, AnnotationDescriptor> annotations;
-    private final Set<MethodDescriptor> methods = new LinkedHashSet<>();
+    private final Set<MethodDescriptor> methods = new TreeSet<>();
 
     public ClassDescriptor(String packageName, String className, List<AnnotationDescriptor> allClassAnnotations)
     {

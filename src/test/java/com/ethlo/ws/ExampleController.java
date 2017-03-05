@@ -23,7 +23,7 @@ public class ExampleController
     
     @RequestMapping("/status/{section}")
     @Secured("ROLE_ADMIN")
-    public String memoryStatus(@PathVariable("section-name") String sectionName)
+    public String memoryStatusSection(@PathVariable("section") String sectionName)
     {
         return null;
     }

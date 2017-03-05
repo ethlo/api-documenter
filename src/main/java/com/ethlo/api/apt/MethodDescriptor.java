@@ -12,7 +12,7 @@ import org.springframework.util.StringUtils;
  * @author Morten Haraldsen
  *
  */
-public class MethodDescriptor
+public class MethodDescriptor implements Comparable<MethodDescriptor>
 {
     private String methodName;
     private Map<String, AnnotationDescriptor> annotations;
@@ -166,5 +166,11 @@ public class MethodDescriptor
     public Map<String, AnnotationDescriptor> getAnnotations()
     {
         return annotations;
+    }
+
+    @Override
+    public int compareTo(MethodDescriptor o)
+    {
+        return methodName.compareTo(o.getMethodName());
     }
 }

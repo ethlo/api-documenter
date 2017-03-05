@@ -48,6 +48,7 @@ import com.ethlo.api.renderer.Renderer;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -85,7 +86,9 @@ public class ApiProcessor extends AbstractProcessor
         simpleTypes.put(Character.class, "character");
         
         mapper = new ObjectMapper();
-        mapper.setVisibility(mapper.getSerializationConfig().getDefaultVisibilityChecker()
+        mapper.setSerializationInclusion(Include.NON_EMPTY);
+        mapper.setVisibility(mapper.getSerializationConfig()
+            .getDefaultVisibilityChecker()
             .withCreatorVisibility(JsonAutoDetect.Visibility.NONE)
             .withFieldVisibility(JsonAutoDetect.Visibility.NONE)
             .withGetterVisibility(JsonAutoDetect.Visibility.PUBLIC_ONLY)
@@ -393,7 +396,7 @@ public class ApiProcessor extends AbstractProcessor
 
     private TypeDescriptor wrapType(TypeMirror type)
     {
-        final TypeDescriptor td = new TypeDescriptor(type.toString());
+        final TypeDescriptor td = new TypeDescriptor(type.toString(), null);
         
         if (type.getKind().equals(TypeKind.DECLARED))
         {
@@ -419,7 +422,7 @@ public class ApiProcessor extends AbstractProcessor
                         final String schema = result.types.get(className);
                         
                         result.types.put(className, schema);
-                        td.getSubTypes().put(alias, className);
+                        td.getSubTypes().add(className);
                     }
                 }
             }

@@ -1,7 +1,7 @@
 package com.ethlo.api.apt;
 
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.mitchellbosecke.pebble.utils.StringUtils;
 
@@ -12,19 +12,25 @@ import com.mitchellbosecke.pebble.utils.StringUtils;
 public class TypeDescriptor
 {
     private final String type;
-    private Map<String, String> subTypes = new TreeMap<>();
+    private final Set<String> subTypes;
 
-    public TypeDescriptor(String type)
+    public TypeDescriptor(String type, Set<String> subTypes)
     {
         this.type = type;
+        this.subTypes = subTypes;
     }
     
+    public TypeDescriptor(String type)
+    {
+        this(type, new TreeSet<>());
+    }
+
     public String getType()
     {
         return this.type;
     }
     
-    public Map<String, String> getSubTypes()
+    public Set<String> getSubTypes()
     {
         return this.subTypes;
     }

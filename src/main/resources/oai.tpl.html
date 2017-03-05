@@ -118,18 +118,28 @@
 										<dd>
 											<dl class="dl-horizontal">
 											{% for param in method.params %}
+												{{param.annotations}}
 												{% for subtype in param.type.subTypes %}
-													<dl>
-														<dt>@type:&quot;{{subtype.key}}&quot;</dt>
-														<dd><pre>{{types[subtype.value]}}</pre></dd>
+													<dl> 
+														<dt>{{subtype}}</dt>
+														<dd><pre>{{models[subtype]}}</pre></dd>
 													</dl>
 												{% else %}
 									  			<dt>{{param.name}}</dt>
-												<dd><a href="#{{param.type.type}}">{{param.type.type}}</a></dd>
+												<dd><a href="#{{param.type.type}}">{{param.type}}</a></dd>
 												{% endfor %}
 												</dd>
 									  		{% endfor %}
 									  		</dl>
+										</dd>
+										<dt>Response</dt>
+										<dd>										
+											{% for subtype in method.returnType.subTypes %}
+												<dl> 
+													<dt>{{subtype}}</dt>
+													<dd><pre>{{models[subtype]}}</pre></dd>
+												</dl>
+											{% endfor %}
 										</dd>
 									</dl>
 								  </div>
