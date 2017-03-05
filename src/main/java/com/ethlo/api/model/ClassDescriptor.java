@@ -1,13 +1,10 @@
-package com.ethlo.api.apt;
+package com.ethlo.api.model;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.common.base.Throwables;
 
 /**
  * 
@@ -91,18 +88,5 @@ public class ClassDescriptor
     public Map<String, AnnotationDescriptor> getAnnotations()
     {
         return annotations;
-    }
-
-    @Override
-    public String toString()
-    {
-        try
-        {
-            return ApiProcessor.mapper.writeValueAsString(this);
-        }
-        catch (JsonProcessingException exc)
-        {
-            throw Throwables.propagate(exc);
-        }
     }
 }

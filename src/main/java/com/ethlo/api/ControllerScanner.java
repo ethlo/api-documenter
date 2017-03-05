@@ -1,4 +1,4 @@
-package com.ethlo.api.apt;
+package com.ethlo.api;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -17,6 +17,13 @@ import java.util.stream.Collectors;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import com.ethlo.api.model.AnnotationDescriptor;
+import com.ethlo.api.model.ClassDescriptor;
+import com.ethlo.api.model.MethodDescriptor;
+import com.ethlo.api.model.Result;
+import com.ethlo.api.model.TypeDescriptor;
+import com.ethlo.api.model.VariableDescriptor;
+
 import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner;
 import io.github.lukehutch.fastclasspathscanner.scanner.ScanResult;
 
@@ -34,7 +41,7 @@ public class ControllerScanner
     public Result findMethods()
     {
         final Map<String, ClassDescriptor> api = new LinkedHashMap<>();
-        final FastClasspathScanner scanner = new FastClasspathScanner();
+        final FastClasspathScanner scanner = new FastClasspathScanner("-org.springframework");
         final ScanResult result = scanner
             .enableMethodAnnotationIndexing()
             .scan(Runtime.getRuntime().availableProcessors());

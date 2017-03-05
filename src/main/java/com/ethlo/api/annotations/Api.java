@@ -19,6 +19,8 @@ import java.lang.annotation.Target;
 public @interface Api
 {
     String[] group() default "";
+    String summary() default "";
+    String description() default "";
 }
 
 

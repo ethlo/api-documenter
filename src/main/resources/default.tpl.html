@@ -15,6 +15,8 @@
     <!-- Bootstrap Core CSS -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/styles/default.min.css">
+
     <!-- Custom CSS -->
     <link href="https://blackrockdigital.github.io/startbootstrap-simple-sidebar/css/simple-sidebar.css" rel="stylesheet">
 
@@ -54,6 +56,7 @@
 .panel-heading a.collapsed:after {
     content:"\e080";
 }
+
 </style>
 </head>
 <body>
@@ -101,47 +104,59 @@
 								  <div id="{{elemId}}" class="panel-collapse collapse">
 								  <div class="panel-body">
 								  	<p>{{ doc }}</p>
-									<dl class="dl-horizontal">
-										<dt>URL</dt>
-										<dd>{{url}}</dd>
-										<dt>HTTP method</dt>
-										<dd>
-											<ul class="taglist">
-											{% for m in httpMethods %}
-												<li>{{m}}</li>
-											{% else %}
-												<li>GET</li>
-											{% endfor %}
-											</ul>
-										</dd>
-										<dt>Parameters</dt>
-										<dd>
-											<dl class="dl-horizontal">
-											{% for param in method.params %}
-												<!-- {{param.annotations}} -->
-												{% for subtype in param.type.subTypes %}
-													<dl> 
-														<dt>{{subtype}}</dt>
-														<dd><pre>{{models[subtype]}}</pre></dd>
-													</dl>
+									<table class="table table-striped table-bordered table-condensed">
+										<tr>
+											<th style="min-width:200px;">URL</th>
+											<td>{{url}}</td>
+										</tr>
+										<tr>
+											<th>HTTP method</th>
+											<td>
+												<ul class="taglist">
+												{% for m in httpMethods %}
+													<li>{{m}}</li>
 												{% else %}
-									  			<dt>{{param.name}}</dt>
-												<dd><a href="#{{param.type.type}}">{{param.type}}</a></dd>
+													<li>GET</li>
 												{% endfor %}
-												</dd>
-									  		{% endfor %}
-									  		</dl>
-										</dd>
-										<dt>Response</dt>
-										<dd>										
+												</ul>
+											</td>
+										</tr>
+										<tr>
+											<th>Parameters</th>
+											<td>
+												<table class="table">
+												{% for param in method.params %}
+													<!-- {{param.annotations}} -->
+													{% for subtype in param.type.subTypes %}
+														<tr> 
+															<th>{{subtype}}</th>
+															<td>
+																<pre><code>{{models[subtype] | raw}}</code></pre>
+															</td>
+														</tr>
+													{% else %}
+													<tr>
+										  			<th>{{param.name}}</th>
+														<td>
+															<a href="#{{param.type.type}}">{{param.type}}</a>
+														</td>
+													</tr>
+													{% endfor %}
+										  		{% endfor %}
+										  		</table>
+											</td>
+										</tr>
+										<tr>
+										<th>Response</th>
+										<td>										
 											{% for subtype in method.returnType.subTypes %}
-												<dl> 
-													<dt>{{subtype}}</dt>
-													<dd><pre>{{models[subtype]}}</pre></dd>
-												</dl>
+											<dl> 
+												<dt>{{subtype}}</dt>
+												<dd><pre><code>{{models[subtype]}}</code></pre></dd>
+											</dl>
 											{% endfor %}
-										</dd>
-									</dl>
+										</td>
+									</table>
 								  </div>
 								  </div>
 								</div>
@@ -153,9 +168,9 @@
             
             <h2>Types</h2>
 			<dl>
-			{% for type in types %}
+			{% for type in models %}
 				<dt id="{{type.key}}">{{type.key}}</dt>
-				<dd><pre>{{type.value}}</pre></dd>
+				<dd><pre><code>{{type.value}}</code></pre></dd>
 			{% endfor %}
 			</dl>
 			
@@ -168,12 +183,17 @@
     <!-- Bootstrap Core JavaScript -->
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/highlight.min.js"></script>
+	
     <!-- Menu Toggle Script -->
     <script>
     $("#menu-toggle").click(function(e) {
         e.preventDefault();
         $("#wrapper").toggleClass("toggled");
     });
+    
+    hljs.initHighlightingOnLoad();
+    
     </script>
 
 </body>

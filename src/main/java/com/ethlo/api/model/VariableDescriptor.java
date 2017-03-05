@@ -1,4 +1,4 @@
-package com.ethlo.api.apt;
+package com.ethlo.api.model;
 
 import java.util.List;
 
