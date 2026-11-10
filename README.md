@@ -1,6 +1,8 @@
 API-Documenter
 ==============
 
+> **Archived:** this project is no longer maintained. For API documentation today, see OpenAPI tooling such as springdoc-openapi.
+
 APT powered generic API documentation allowing API documentation for almost any API.
 
 ## Motivation
